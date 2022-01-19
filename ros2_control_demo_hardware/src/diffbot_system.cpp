@@ -22,6 +22,13 @@
 
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "boost/asio.hpp"
+using namespace boost::asio;
+#include <iostream>
+
+#include "json.hpp"
+
+using json = nlohmann::json;
 
 namespace ros2_control_demo_hardware
 {
@@ -127,6 +134,7 @@ hardware_interface::return_type DiffBotSystemHardware::start()
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Starting ...please wait...");
 
+  //this is just a sleep loop to allow hardware to get going
   for (auto i = 0; i <= hw_start_sec_; i++)
   {
     rclcpp::sleep_for(std::chrono::seconds(1));
@@ -210,15 +218,26 @@ hardware_interface::return_type DiffBotSystemHardware::read()
 hardware_interface::return_type ros2_control_demo_hardware::DiffBotSystemHardware::write()
 {
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Writing...");
+    json send_json;
 
   for (auto i = 0u; i < hw_commands_.size(); i++)
   {
     // Simulate sending commands to the hardware
+    //This is where sending commands to the hardware goes!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     RCLCPP_INFO(
       rclcpp::get_logger("DiffBotSystemHardware"), "Got command %.5f for '%s'!", hw_commands_[i],
       info_.joints[i].name.c_str());
+      send_json[info_.joints[i].name.c_str()] = hw_commands_[i];
   }
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Joints successfully written!");
+  io_service io_service;
+
+  ip::udp::socket socket(io_service);
+  ip::udp::endpoint remote_endpoint;
+  socket.open(ip::udp::v4());
+  remote_endpoint = ip::udp::endpoint(ip::address::from_string("192.168.0.64"), 8888);
+  boost::system::error_code err;
+  socket.send_to(buffer(send_json.dump()), remote_endpoint, 0, err);
 
   return hardware_interface::return_type::OK;
 }
