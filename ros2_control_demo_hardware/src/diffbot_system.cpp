@@ -23,6 +23,14 @@
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/rclcpp.hpp"
 
+//START: My stuff
+#include "boost/asio.hpp"
+using namespace boost::asio;
+#include <iostream>
+#include "ros2_control_demo_hardware/json.hpp"
+using json = nlohmann::json;
+//STOP: My stuff
+
 namespace ros2_control_demo_hardware
 {
 CallbackReturn DiffBotSystemHardware::on_init(const hardware_interface::HardwareInfo & info)
@@ -217,15 +225,28 @@ hardware_interface::return_type ros2_control_demo_hardware::DiffBotSystemHardwar
   // START: This part here is for exemplary purposes - Please do not copy to your production code
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Writing...");
 
+  json send_json;  //My stuff
+
   for (auto i = 0u; i < hw_commands_.size(); i++)
   {
     // Simulate sending commands to the hardware
     RCLCPP_INFO(
       rclcpp::get_logger("DiffBotSystemHardware"), "Got command %.5f for '%s'!", hw_commands_[i],
       info_.joints[i].name.c_str());
+      send_json[info_.joints[i].name.c_str()] = hw_commands_[i];  //My stuff
   }
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Joints successfully written!");
   // END: This part here is for exemplary purposes - Please do not copy to your production code
+  
+  //START: My stuff
+  io_service io_service;
+  ip::udp::socket socket(io_service);
+  ip::udp::endpoint remote_endpoint;
+  socket.open(ip::udp::v4());
+  remote_endpoint = ip::udp::endpoint(ip::address::from_string("192.168.121.221"), 8888);
+  boost::system::error_code err;
+  socket.send_to(buffer(send_json.dump()), remote_endpoint, 0, err);
+  //STOP: My stuff
 
   return hardware_interface::return_type::OK;
 }
