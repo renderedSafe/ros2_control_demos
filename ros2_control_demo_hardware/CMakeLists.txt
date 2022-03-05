@@ -15,6 +15,7 @@ find_package(ament_cmake REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
 
 
@@ -40,8 +41,12 @@ ament_target_dependencies(
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  rclcpp_components
 )
 
+rclcpp_components_register_nodes(${PROJECT_NAME}
+  "ros2_control_demo_hardware::HardwareCommandPub")
+  
 # Causes the visibility macros to use dllexport rather than dllimport,
 # which is appropriate when building the dll but not consuming it.
 target_compile_definitions(${PROJECT_NAME} PRIVATE "JOINT_STATE_BROADCASTER_BUILDING_DLL")
@@ -75,5 +80,7 @@ ament_export_dependencies(
   pluginlib
   rclcpp
   rclcpp_lifecycle
+  rclcpp_components
+  find_package(rclcpp_components REQUIRED)
 )
 ament_package()

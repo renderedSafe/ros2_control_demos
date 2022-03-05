@@ -22,6 +22,8 @@
 
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp_components/register_node_macro.hpp>
 
 //START: My stuff
 #include "boost/asio.hpp"
@@ -33,11 +35,27 @@ using json = nlohmann::json;
 
 namespace ros2_control_demo_hardware
 {
+
+HardwareCommandPub::HardwareCommandPub() : Node("hardware_command_publisher")
+{
+  publisher_ = this->create_publisher<std_msgs::msg::String>("test_topic", 10);
+}
+
+void HardwareCommandPub::publishData()
+{
+  auto message = std_msgs::msg::String();
+  message.data = "Hello, world! ";
+  publisher_->publish(message);
+}
+
+
 CallbackReturn DiffBotSystemHardware::on_init(const hardware_interface::HardwareInfo & info)
 {
   base_x_ = 0.0;
   base_y_ = 0.0;
   base_theta_ = 0.0;
+
+  hw_cmd_pub_ = std::make_shared<HardwareCommandPub>();  //fire up the publisher node
 
   if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS)
   {
@@ -100,7 +118,7 @@ CallbackReturn DiffBotSystemHardware::on_init(const hardware_interface::Hardware
       return CallbackReturn::ERROR;
     }
   }
-
+  
   return CallbackReturn::SUCCESS;
 }
 
@@ -225,7 +243,6 @@ hardware_interface::return_type ros2_control_demo_hardware::DiffBotSystemHardwar
   // START: This part here is for exemplary purposes - Please do not copy to your production code
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Writing...");
 
-  json send_json;  //My stuff
 
   for (auto i = 0u; i < hw_commands_.size(); i++)
   {
@@ -233,26 +250,16 @@ hardware_interface::return_type ros2_control_demo_hardware::DiffBotSystemHardwar
     RCLCPP_INFO(
       rclcpp::get_logger("DiffBotSystemHardware"), "Got command %.5f for '%s'!", hw_commands_[i],
       info_.joints[i].name.c_str());
-      send_json[info_.joints[i].name.c_str()] = hw_commands_[i];  //My stuff
   }
   RCLCPP_INFO(rclcpp::get_logger("DiffBotSystemHardware"), "Joints successfully written!");
   // END: This part here is for exemplary purposes - Please do not copy to your production code
   
-  //START: My stuff
-  io_service io_service;
-  ip::udp::socket socket(io_service);
-  ip::udp::endpoint remote_endpoint;
-  socket.open(ip::udp::v4());
-  remote_endpoint = ip::udp::endpoint(ip::address::from_string("192.168.121.221"), 8888);
-  boost::system::error_code err;
-  socket.send_to(buffer(send_json.dump()), remote_endpoint, 0, err);
-  //STOP: My stuff
-
+  hw_cmd_pub_->publishData();
   return hardware_interface::return_type::OK;
 }
-
 }  // namespace ros2_control_demo_hardware
 
 #include "pluginlib/class_list_macros.hpp"
 PLUGINLIB_EXPORT_CLASS(
   ros2_control_demo_hardware::DiffBotSystemHardware, hardware_interface::SystemInterface)
+
